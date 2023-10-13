@@ -953,6 +953,11 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     id result = [self executeQuery:sql withArgumentsInArray:nil orDictionary:nil orVAList:args];
     
     va_end(args);
+
+
+    
+
+
     return result;
 }
 
