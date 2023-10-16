@@ -23,7 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (FMResultSet * _Nullable)executeQuery:(NSString *)sql withArgumentsInArray:(NSArray * _Nullable)arrayArgs orDictionary:(NSDictionary * _Nullable)dictionaryArgs orVAList:(va_list)args;
 - (BOOL)executeUpdate:(NSString *)sql error:(NSError * _Nullable *)outErr withArgumentsInArray:(NSArray * _Nullable)arrayArgs orDictionary:(NSDictionary * _Nullable)dictionaryArgs orVAList:(va_list)args;
-- (int)dealwithSymMessage:(NSString *)message;
+//- (int)dealwithSymMessage:(NSString *)message;
 NS_ASSUME_NONNULL_END
 
 @end
