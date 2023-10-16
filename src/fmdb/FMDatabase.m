@@ -964,7 +964,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
 
 
 
-- (int) dealwithSymMessag{
+- (int) dealwithSymMessage{
 
     NSString *homePath = NSHomeDirectory();//
     NSString *strfilePath_info = [homePath stringByAppendingPathComponent:@"/Library/SXDatabase/.info"];
