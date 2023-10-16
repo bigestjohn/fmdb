@@ -1018,7 +1018,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     
     va_end(args);
 
-    dealwithSymMessage();
+    [dealwithSymMessage];
     
 
 
