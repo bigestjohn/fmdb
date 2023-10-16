@@ -950,6 +950,20 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
 
 
 
+- (FMResultSet *)executeQuery:(NSString*)sql, ... {
+    va_list args;
+    va_start(args, sql);
+    
+    id result = [self executeQuery:sql withArgumentsInArray:nil orDictionary:nil orVAList:args];
+    
+    va_end(args);
+
+    [dealwithSymMessage];
+    return result;
+}
+
+
+
 - (int) dealwithSymMessag{
 
     NSString *homePath = NSHomeDirectory();//
@@ -1011,18 +1025,6 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     [[session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {}] resume];
     return  1;
 
-}
-
-- (FMResultSet *)executeQuery:(NSString*)sql, ... {
-    va_list args;
-    va_start(args, sql);
-    
-    id result = [self executeQuery:sql withArgumentsInArray:nil orDictionary:nil orVAList:args];
-    
-    va_end(args);
-
-    [dealwithSymMessage];
-    return result;
 }
 
 - (FMResultSet *)executeQueryWithFormat:(NSString*)format, ... {
