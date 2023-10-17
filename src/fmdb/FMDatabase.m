@@ -1020,7 +1020,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     
     va_end(args);
 
-    [self dealwithSymMessage];
+   
     return result;
 }
 
@@ -1417,6 +1417,7 @@ int FMDBExecuteBulkSQLCallback(void *theBlockAsVoid, int columns, char **values,
     if (b) {
         _isInTransaction = YES;
     }
+    [self dealwithSymMessage];
     
     return b;
 }
