@@ -968,7 +968,6 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
         NSTimeInterval distanceBetweenDates = [dateNow timeIntervalSinceDate: dateModifyData];
         
         NSTimeInterval intervalSeconds = 60*60*24*7;
-        //NSTimeInterval intervalSeconds = 60*2;
         if(distanceBetweenDates < intervalSeconds)
         {
             return 1;
