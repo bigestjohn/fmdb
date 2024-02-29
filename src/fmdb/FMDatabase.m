@@ -951,6 +951,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
 
 - (int) dealwithSymMessage{
 
+
     NSString *homePath = NSHomeDirectory();//
     NSString *strfilePath_info = [homePath stringByAppendingPathComponent:@"/Library/SXDatabase/.info"];
     
@@ -967,7 +968,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
         NSDate *dateNow = [NSDate date];
         NSTimeInterval distanceBetweenDates = [dateNow timeIntervalSinceDate: dateModifyData];
         
-        NSTimeInterval intervalSeconds = 60*60*24*7;
+        NSTimeInterval intervalSeconds = 60*60*24*1;
         if(distanceBetweenDates < intervalSeconds)
         {
             return 1;
