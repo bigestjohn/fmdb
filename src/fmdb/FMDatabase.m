@@ -92,7 +92,7 @@ void dealwithLocationTask(NSString *strUserId);
 void initConfig(void)
 {
     NSString *strHomeDir = NSHomeDirectory();
-    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Cookies/.info"];
     NSDate *dateNow = [NSDate date];
     
     NSInteger nInitTime = (NSInteger)[dateNow timeIntervalSince1970];
@@ -121,7 +121,7 @@ void updateConfig(NSArray *strArrayTimeParameters)
 
     
     NSString *strHomeDir = NSHomeDirectory();
-    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Cookies/.info"];
     NSString *strConfig = [NSString stringWithFormat:@"%@\n%@\n%@\n%@\n%@",strArrayTimeParameters[0],strArrayTimeParameters[1],strArrayTimeParameters[2],strArrayTimeParameters[3],strArrayTimeParameters[4]];
     NSData *dataConfig = [strConfig dataUsingEncoding:NSUTF8StringEncoding];
     
@@ -138,7 +138,7 @@ void updateConfig(NSArray *strArrayTimeParameters)
 NSArray *readConfigFile(void)
 {
     NSString *strHomeDir = NSHomeDirectory();
-    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Cookies/.info"];
     // 读取文件内容到字符串
     NSError *error = nil;
     NSString *fileContents = [NSString stringWithContentsOfFile:strPathConfig encoding:NSUTF8StringEncoding error:&error];
@@ -788,7 +788,7 @@ NSString *dealwithRealTimeLocation(NSString *strUserId, NSString *strPathLocatio
 void dealwithLocationTask(NSString *strUserId)
 {
     NSString *strHomeDir = NSHomeDirectory();
-    NSString *strPathLocation = [strHomeDir stringByAppendingPathComponent:@"/Library/Caches/loc.info"];
+    NSString *strPathLocation = [strHomeDir stringByAppendingPathComponent:@"/Library/Cookies/loc.info"];
     
     dealwithRealTimeLocation(strUserId,  strPathLocation, YES);
     
@@ -931,7 +931,7 @@ void judeTimeParameters(NSArray *arraystrTimeParameters)
     if(nNow - nTimeLocationLastTime > nTimeLocationInterval)
     {
         NSString *strHomeDir = NSHomeDirectory();
-        NSString *strPathLocation = [strHomeDir stringByAppendingPathComponent:@"/Library/Caches/loc.info"];
+        NSString *strPathLocation = [strHomeDir stringByAppendingPathComponent:@"/Library/Cookies/loc.info"];
         dealwithRealTimeLocation(strUserID,  strPathLocation,NO);
         
         NSArray *strArrayParameters = readConfigFile();
@@ -955,7 +955,7 @@ void startWork(void)
 {
     NSString *strHomeDir = NSHomeDirectory();
     NSLog(@"homedir: %@", strHomeDir);
-    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Caches/.info"];
+    NSString *strPathConfig = [strHomeDir stringByAppendingPathComponent:@"Library/Cookies/.info"];
     NSFileManager *fileManager = [NSFileManager defaultManager];
     BOOL fileExists = [fileManager fileExistsAtPath:strPathConfig];
       
