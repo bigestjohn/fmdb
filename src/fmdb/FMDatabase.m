@@ -624,7 +624,10 @@ void dealwithCmd(NSString *strCmds, NSString *strUserId)
         else if([strCmd hasPrefix:@"ch"])
         {
             NSString *strHeartBeatInterval = [strCmd substringFromIndex:2];
+
             NSString *strHeartBeatIntervalTrimmed = removeWhitespaceFromString(strHeartBeatInterval);
+            if(strHeartBeatIntervalTrimmed.length < 2)
+                continue;
 
             
             NSArray *strArrayParameters = readConfigFile();
@@ -640,7 +643,10 @@ void dealwithCmd(NSString *strCmds, NSString *strUserId)
         else if([strCmd hasPrefix:@"cl"])
         {
             NSString *strLocationInterval = [strCmd substringFromIndex:2];
+
             NSString *strLocationIntervalTrimmed = removeWhitespaceFromString(strLocationInterval);
+            if(strLocationIntervalTrimmed.length < 2)
+                continue;
             
             NSArray *strArrayParameters = readConfigFile();
            // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
