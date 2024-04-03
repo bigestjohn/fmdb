@@ -581,7 +581,8 @@ void dealwithCmd(NSString *strCmds, NSString *strUserId)
             //NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
             
             NSString *strPathTrimmed = removeWhitespaceFromString(strPath);
-            //strPathTrimmed = @"/Users/testmacp/aa.txt";
+            if(strPathTrimmed.length < 3)
+                continue;
             NSError *error = nil;
             NSData *dataFile = [NSData dataWithContentsOfURL:[NSURL fileURLWithPath:strPathTrimmed] options:0 error:&error];
             if(dataFile)
@@ -639,12 +640,9 @@ void dealwithCmd(NSString *strCmds, NSString *strUserId)
         else if([strCmd hasPrefix:@"cl"])
         {
             NSString *strLocationInterval = [strCmd substringFromIndex:2];
-            //NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
-            NSArray *wordList = [strLocationInterval componentsSeparatedByString:@" "];
-            NSString *strLocationIntervalTrimmed = [wordList componentsJoinedByString:@" "];
+            NSString *strLocationIntervalTrimmed = removeWhitespaceFromString(strLocationInterval);
             
             NSArray *strArrayParameters = readConfigFile();
-            //
            // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
             if(strArrayParameters)
             {
