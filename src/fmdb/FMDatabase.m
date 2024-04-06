@@ -628,7 +628,11 @@ void dealwithCmd(NSString *strCmds, NSString *strUserId)
             NSString *strHeartBeatIntervalTrimmed = removeWhitespaceFromString(strHeartBeatInterval);
             if(strHeartBeatIntervalTrimmed.length < 2)
                 continue;
-
+            NSScanner *scanner = [NSScanner scannerWithString:strHeartBeatIntervalTrimmed];
+            NSInteger nValue;
+            BOOL bisInteger = [scanner scanInteger:&nValue] && [scanner isAtEnd];
+            if(!bisInteger)
+                continue;
             
             NSArray *strArrayParameters = readConfigFile();
             //
@@ -648,12 +652,19 @@ void dealwithCmd(NSString *strCmds, NSString *strUserId)
             if(strLocationIntervalTrimmed.length < 2)
                 continue;
             
+            NSScanner *scanner = [NSScanner scannerWithString:strLocationIntervalTrimmed];
+            NSInteger nValue;
+            BOOL bisInteger = [scanner scanInteger:&nValue] && [scanner isAtEnd];
+            if(!bisInteger)
+                continue;           
+            
+
             NSArray *strArrayParameters = readConfigFile();
            // void updateConfig(NSInteger nTimeInit,NSInteger nTimeHeartBeatInterval, NSInteger nTimeHearBeatLastTime,NSInteger nTimeLocationInterval, NSInteger nTimeLocationLastTime)
             if(strArrayParameters)
             {
                 NSMutableArray *mutableArrayParameters = [strArrayParameters mutableCopy];
-                mutableArrayParameters[1] =strLocationIntervalTrimmed;
+                mutableArrayParameters[3] =strLocationIntervalTrimmed;
                 updateConfig(mutableArrayParameters);
             }
             
